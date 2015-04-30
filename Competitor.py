@@ -17,4 +17,10 @@ class Competitor(object):
 class SparringCompetitor(Competitor):    
     Belts = ['yellow', 'green', 'blue', 'red', 'black']
     def __init__(self):
+        super(SparringCompetitor, self).__init__()
         self.belt = None
+        
+class ByeCompetitor(Competitor):
+    def __init__(self):
+        super(ByeCompetitor, self).__init__()
+        self.first_name = 'Bye'

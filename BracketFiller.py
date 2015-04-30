@@ -19,7 +19,7 @@ from openpyxl import Workbook, load_workbook
 # Maps the fighter number to their position in the bracket
 fighter_to_excel_map = [['G16', # Winner of 2 person bracket
                          'D11', 'D21'],
-                        ['K16', # Winner of 4 person bracket
+                        ['J16', # Winner of 4 person bracket
                          'H10', 'H22', # Finals
                          'E7', 'E13', 'E19', 'E25'],
                         ['L18', # Winner of 8 person bracket
@@ -34,6 +34,8 @@ age_groups = [7, 11, 14, 17, 32]
 # Weight groups
 men_weight = [135.5, 150.5, 165.5, 180.5, 195.5]
 women_weight = [108.5, 120.5, 135.5, 150.5, 165.5]
+
+bye = Competitor.ByeCompetitor()
 
 ### GENERAL UTILITIES
 def read_str_val(ws, cell):
@@ -117,12 +119,15 @@ def get_bracket_weight(competitors):
     
     return str(min_weight) + '-' + str(max_weight)
 
-def get_bracket_indices(n, node, indices):
+def get_bracket_indices(n, node, indices, bracket_size):
     if (n == 1):
-        indices.append(int(node))
+        if (node >= bracket_size):
+            indices.append(int(node))
+        else:
+            indices.append(int(2*node))
     else:
-        get_bracket_indices(math.ceil(n/2.), 2*node, indices)
-        get_bracket_indices(math.floor(n/2.), 2*node+1, indices)
+        get_bracket_indices(math.ceil(n/2.), 2*node, indices, bracket_size)
+        get_bracket_indices(math.floor(n/2.), 2*node+1, indices, bracket_size)
 
 def get_competitors_per_division(ws, start):
     '''
@@ -167,13 +172,18 @@ def get_cell_below(cell):
         if (cell[:i].isalpha()):
             return cell[:i] + str(int(cell[i:])+1)
 
-def write_competitors_to_bracket(ws, competitors, indices, outwb, output_fname):
+def write_competitors_to_bracket(ws, competitors, indices, outwb, output_fname, bracket_size):
     num_competitors = len(competitors)
-    for i in range(num_competitors):
-        c = competitors[i]
+    ctr = 0
+    for i in range(bracket_size, 2*bracket_size):
+        if (ctr < num_competitors and i == indices[ctr]):
+            c = competitors[ctr]
+            ctr += 1
+        else:
+            c = bye
         name = c.first_name + ' ' + c.last_name
         bracket_index = int(math.ceil(math.log(num_competitors,2)))-1;
-        fighter_index = indices[i]-1
+        fighter_index = i-1
         cell = fighter_to_excel_map[bracket_index][fighter_index]
         ws[cell] = name
         ws[get_cell_below(cell)] = c.school
@@ -225,13 +235,14 @@ def fill_in_brackets(template_fname, data_fname, output_fname):
         competitors = get_competitors(sparws, row, comp_in_div)
         
         bracket_indices = []
-        get_bracket_indices(comp_in_div, 1, bracket_indices)
+        bracket_size = int(2**math.ceil(math.log(comp_in_div, 2)));
+        get_bracket_indices(comp_in_div, 1, bracket_indices, bracket_size)
         bracket_indices.sort()
         
         outws = get_bracket_template_sheet(outwb, templatewb, division, comp_in_div)        
         outws.title = 'Division ' + str(division)        
 
-        write_competitors_to_bracket(outws, competitors, bracket_indices, outwb, output_fname)
+        write_competitors_to_bracket(outws, competitors, bracket_indices, outwb, output_fname, bracket_size)
         fill_first_line(outws, competitors, outwb, output_fname)
 
         row += comp_in_div + 1
